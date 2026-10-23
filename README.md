@@ -40,16 +40,12 @@ Sessão de 5 horas, limite semanal e status do serviço, ao lado do relógio, co
 - Uma conta Claude **Pro ou Max** logada no [Claude Code](https://docs.claude.com/en/docs/claude-code)
   (o app usa o mesmo login — precisa existir `~/.claude/.credentials.json`).
 - **Windows 10/11** ou **Linux** com bandeja do sistema (KDE, XFCE, Cinnamon, MATE, GNOME com AppIndicator).
-- **Python 3.10+** — exceto se você usar o `.exe` pronto.
+- **Python 3.10+** — no Windows: `winget install Python.Python.3.12`
+  (ou [python.org](https://www.python.org/downloads/), marcando *Add python.exe to PATH*).
 
 ## Instalação
 
 ### Windows
-
-**Opção 1 — executável pronto (sem Python):** baixe o `ClaudeUsage.exe` na página de
-[Releases](https://github.com/Guilhermee19/claude-usage-tray/releases) e dê dois cliques.
-
-**Opção 2 — a partir do código:**
 
 ```powershell
 git clone https://github.com/Guilhermee19/claude-usage-tray.git
@@ -60,6 +56,20 @@ cd claude-usage-tray
 O instalador cria um ambiente virtual em `.venv`, instala as dependências, adiciona o **Claude Usage**
 ao Menu Iniciar, pergunta se deve iniciar junto com o Windows e já abre o app.
 Depois disso, use o Menu Iniciar ou `start-windows.bat`.
+
+#### Opcional: gerar um `.exe` na sua máquina
+
+Se quiser um executável único (por exemplo, para levar para outro PC sem Python), gere-o você mesmo
+depois de rodar o `install-windows.bat`:
+
+```powershell
+.venv\Scripts\pip install -r requirements-dev.txt
+.venv\Scripts\python packaging\build.py
+```
+
+O arquivo sai em `dist\ClaudeUsage.exe` (~20 MB). Dê dois cliques para abrir; para iniciar com o Windows,
+ative a chave nas Configurações do próprio app. A pasta `dist/` está no `.gitignore` — o executável é
+para uso local e não deve ser commitado.
 
 > **O ícone não apareceu?** O Windows 11 esconde ícones novos atrás da seta **^** da bandeja.
 > Arraste-o para a barra, ou ative em *Configurações → Personalização → Barra de tarefas →
@@ -175,8 +185,7 @@ claude_usage_tray/
 └── setup_cli.py   # atalhos de menu/autostart usados pelos instaladores
 ```
 
-**Publicar uma versão:** crie uma tag `v*` (ex.: `git tag v1.0.0 && git push --tags`). O GitHub Actions gera
-o `ClaudeUsage.exe` e anexa ao Release automaticamente.
+A cada push, o GitHub Actions roda um teste rápido no Windows e no Linux (importa o app e desenha os ícones).
 
 ## Licença
 

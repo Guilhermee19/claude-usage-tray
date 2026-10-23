@@ -98,10 +98,14 @@ Depois disso, use o menu de aplicativos ou `bash start-linux.sh`.
 |---|---|---|
 | Abrir o popup | clique esquerdo no ícone | menu do ícone → **Abrir** |
 | Menu rápido | clique direito | clique no ícone |
-| Ver os números sem abrir | passe o mouse (tooltip) | — |
+| Ver os números sem abrir | passe o mouse (tooltip) ou abra o menu | `8%` ao lado do ícone no painel, ou abra o menu |
 
-No menu: **Atualizar agora**, **Ícone da barra** (estilo e monocromático), **Configurações…**,
-**Iniciar com o sistema** e **Sair**. Pelo popup, `Esc` ou clicar fora fecha.
+O topo do menu sempre mostra o resumo — `Sessão: 8% — reseta hoje às 19:10` e `Semana: 4% — reseta qui 29/10`.
+Depois vêm **Atualizar agora**, **Ícone da barra** (estilo, monocromático e, no Linux, *Mostrar % ao lado do
+ícone*), **Configurações…**, **Iniciar com o sistema** e **Sair**. Pelo popup, `Esc` ou clicar fora fecha.
+
+> O texto ao lado do ícone aparece no GNOME, Unity, XFCE, MATE e Cinnamon. O KDE Plasma não exibe esse texto —
+> lá, use o estilo **Porcentagem** para ver o número no próprio ícone.
 
 <div align="center">
 <img src="docs/images/settings.png" width="420" alt="Janela de configurações">
@@ -128,9 +132,12 @@ As preferências ficam em `config.json`:
 {
   "icon_style": "ring",
   "icon_mono": false,
+  "panel_label": true,
   "interval_seconds": 120
 }
 ```
+
+`panel_label` (só Linux): mostra a % em texto ao lado do ícone no painel.
 
 `icon_style`: `ring`, `battery`, `bar`, `percent` ou `dot`. Erros vão para `app.log` na mesma pasta.
 

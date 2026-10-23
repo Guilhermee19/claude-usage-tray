@@ -10,10 +10,10 @@ from . import system, tray_icon
 from .popup import Popup
 from .settings import AUTOSTART_LABEL, Settings
 from .system import APP_NAME
-from .usage_api import RateLimited, ServiceStatus, Usage, UsageError, fetch_status, fetch_usage
+from .usage_api import RateLimited, ServiceStatus, Usage, UsageError, Window, fetch_status, fetch_usage, format_reset
 
 CONFIG_PATH = system.config_dir() / "config.json"
-DEFAULT_CONFIG = {"icon_style": "ring", "icon_mono": False, "interval_seconds": 120}
+DEFAULT_CONFIG = {"icon_style": "ring", "icon_mono": False, "panel_label": True, "interval_seconds": 120}
 LEGACY_STYLES = {"number": "percent"}
 MAX_BACKOFF_SECONDS = 900
 
@@ -62,10 +62,20 @@ class App:
         styles = [style_item(style, name) for style, name in tray_icon.STYLES.items()]
         mono = item("Monocromático", lambda: self._ui(self.set_icon, self.config["icon_style"], not self.config["icon_mono"]),
                     checked=lambda _i: self.config["icon_mono"])
+        # Linhas só de leitura no topo: dá pra ver os números sem abrir o popup (no Linux não há tooltip).
+        info = [
+            item(lambda _i, n=n: (self._summary_lines() + ["", "", ""])[n], None, enabled=False,
+                 visible=lambda _i, n=n: len(self._summary_lines()) > n)
+            for n in range(3)
+        ]
+        panel_label = item("Mostrar % ao lado do ícone", lambda: self._ui(self.toggle_panel_label),
+                           checked=lambda _i: self.config["panel_label"], visible=not system.IS_WINDOWS)
         return pystray.Menu(
+            *info,
+            pystray.Menu.SEPARATOR,
             item("Abrir", lambda: self._ui(self.popup.toggle), default=True),
             item("Atualizar agora", lambda: self._ui(self.refresh_now)),
-            item("Ícone da barra", pystray.Menu(*styles, pystray.Menu.SEPARATOR, mono)),
+            item("Ícone da barra", pystray.Menu(*styles, pystray.Menu.SEPARATOR, mono, panel_label)),
             item("Configurações…", lambda: self._ui(self.open_settings)),
             item(AUTOSTART_LABEL, lambda: self._ui(self.toggle_autostart),
                  checked=lambda _i: system.autostart_enabled()),
@@ -78,7 +88,12 @@ class App:
         self.root.after(0, fn, *args)
 
     def run(self) -> None:
-        self.icon.run_detached()
+        if system.IS_WINDOWS:
+            self.icon.run_detached()
+        else:
+            # Nos backends GTK o run_detached não roda o loop do GLib (espera que o app rode);
+            # sem ele o ícone nem aparece. O tkinter fica com o thread principal, o GLib com este.
+            threading.Thread(target=self.icon.run, daemon=True).start()
         self.refresh_now()
         self.root.mainloop()
 
@@ -120,6 +135,34 @@ class App:
     def _update_icon(self) -> None:
         self.icon.icon = self._render_icon()
         self.icon.title = self._tooltip()[:127]
+        self.icon.update_menu()
+        self._update_panel_label()
+
+    def _summary_lines(self) -> list[str]:
+        if self.error and not self.usage:
+            return [self.error]
+
+        def line(name: str, window: Window | None) -> list[str]:
+            if not window:
+                return []
+            reset = format_reset(window.resets_at)
+            return [f"{name}: {window.percent:.0f}%" + (f" — {reset[0].lower()}{reset[1:]}" if reset else "")]
+
+        lines = (line("Sessão", self.usage.session) + line("Semana", self.usage.weekly)) if self.usage else []
+        if self.error:
+            lines.append(f"⚠ {self.error}")
+        return lines or ["Carregando…"]
+
+    def _update_panel_label(self) -> None:
+        """Linux: texto ao lado do ícone no painel (GNOME/Unity/XFCE mostram; o KDE ignora)."""
+        indicator = getattr(self.icon, "_appindicator", None)  # só existe no backend AppIndicator
+        if indicator is None:
+            return
+        from gi.repository import GLib
+
+        percent = self._session_percent()
+        text = f"{percent:.0f}%" if self.config["panel_label"] and percent is not None else ""
+        GLib.idle_add(indicator.set_label, text, "100%")  # GTK só pode ser tocado no thread dele
 
     def _tooltip(self) -> str:
         if self.error and not self.usage:
@@ -141,6 +184,11 @@ class App:
         self._update_icon()
         self.icon.update_menu()
         self.settings.draw()
+
+    def toggle_panel_label(self) -> None:
+        self.config["panel_label"] = not self.config["panel_label"]
+        save_config(self.config)
+        self._update_icon()
 
     def toggle_autostart(self) -> None:
         system.set_autostart(not system.autostart_enabled())

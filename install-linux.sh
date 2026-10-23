@@ -21,11 +21,21 @@ bold "  Claude Usage Tray — instalação no Linux"
 echo "  ========================================"
 echo
 
+# Os pacotes do apt/dnf/pacman (Tkinter, PyGObject) são do Python do SISTEMA. Um python3 do pyenv,
+# conda ou Homebrew no PATH não os enxerga, então usamos /usr/bin/python3 sempre que existir.
+PY=/usr/bin/python3
+[[ -x "$PY" ]] || PY="$(command -v python3 || true)"
+
 # Tk desenha o popup; PyGObject + AppIndicator mostram o ícone na bandeja; xprop acha a área útil da tela.
-deps_ok() {
-    python3 -c "import sys; sys.exit(sys.version_info < (3, 10))" 2>/dev/null &&
-        python3 -c "import venv, tkinter" 2>/dev/null &&
-        python3 -c "
+missing_deps() {
+    local missing=()
+    if [[ -z "$PY" ]] || ! "$PY" -c "import sys; sys.exit(sys.version_info < (3, 10))" 2>/dev/null; then
+        echo "Python 3.10+"
+        return
+    fi
+    "$PY" -c "import venv, ensurepip" 2>/dev/null || missing+=("venv")
+    "$PY" -c "import tkinter" 2>/dev/null || missing+=("Tkinter")
+    "$PY" -c "
 import gi
 for ns in ('AyatanaAppIndicator3', 'AppIndicator3'):
     try:
@@ -34,12 +44,16 @@ for ns in ('AyatanaAppIndicator3', 'AppIndicator3'):
         pass
 else:
     raise SystemExit(1)
-" 2>/dev/null &&
-        command -v xprop >/dev/null
+" 2>/dev/null || missing+=("PyGObject/AppIndicator")
+    command -v xprop >/dev/null || missing+=("xprop")
+    local IFS=","
+    echo "${missing[*]}"
 }
 
 bold "[1/4] Verificando dependências do sistema ..."
-if ! deps_ok; then
+missing="$(missing_deps)"
+if [[ -n "$missing" ]]; then
+    echo "      faltando: ${missing//,/, }"
     sudo=""; [[ $EUID -ne 0 ]] && sudo="sudo"
     if command -v apt-get >/dev/null; then
         # Instalação anterior interrompida: o apt recusa tudo até o dpkg terminar o que ficou pela metade.
@@ -59,12 +73,17 @@ if ! deps_ok; then
     else
         fail "Gerenciador de pacotes não reconhecido. Instale: Python 3.10+, Tkinter, PyGObject, AyatanaAppIndicator3 e xprop."
     fi
-    deps_ok || fail "Dependências ainda faltando depois da instalação. Veja a seção Linux do README."
+    PY=/usr/bin/python3
+    [[ -x "$PY" ]] || PY="$(command -v python3 || true)"
+    missing="$(missing_deps)"
+    [[ -z "$missing" ]] || fail "Ainda faltando depois da instalação: ${missing//,/, } (Python usado: ${PY:-nenhum}).
+       Veja a seção Linux do README."
 fi
+echo "      ok — usando $PY ($("$PY" --version 2>&1))"
 
 bold "[2/4] Criando ambiente virtual e instalando pacotes Python ..."
 # --system-site-packages: o PyGObject (gi) vem do sistema, não do pip.
-[[ -x .venv/bin/python ]] || python3 -m venv --system-site-packages .venv
+[[ -x .venv/bin/python ]] || "$PY" -m venv --system-site-packages .venv
 .venv/bin/python -m pip install --disable-pip-version-check -q --upgrade pip
 .venv/bin/python -m pip install --disable-pip-version-check -q -r requirements.txt
 

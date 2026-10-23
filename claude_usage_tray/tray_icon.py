@@ -33,8 +33,8 @@ def _palette(percent: float | None, mono: bool) -> tuple[tuple, tuple]:
 
 def _font(size: int) -> ImageFont.ImageFont:
     # Windows primeiro; no Linux o Pillow procura o arquivo em /usr/share/fonts.
-    for name in ("segoeuib.ttf", "arialbd.ttf", "DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf",
-                 "NotoSans-Bold.ttf"):
+    for name in ("segoeuib.ttf", "arialbd.ttf", "Ubuntu-B.ttf", "DejaVuSans-Bold.ttf",
+                 "LiberationSans-Bold.ttf", "NotoSans-Bold.ttf"):
         try:
             return ImageFont.truetype(name, size)
         except OSError:

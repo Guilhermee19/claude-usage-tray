@@ -94,11 +94,18 @@ read -rp "      Iniciar junto com o sistema? [S/n] " answer || answer=""
 .venv/bin/python -m claude_usage_tray.setup_cli --install $autostart
 chmod +x install-linux.sh start-linux.sh
 
+# GNOME (padrão do Ubuntu) só mostra ícones de bandeja com a extensão AppIndicator ativa.
 if [[ "${XDG_CURRENT_DESKTOP:-}" == *GNOME* ]] && command -v gnome-extensions >/dev/null; then
     if ! gnome-extensions list --enabled 2>/dev/null | grep -qi appindicator; then
-        warn "No GNOME o ícone só aparece com a extensão AppIndicator ativa."
-        warn "Ubuntu: já vem instalada. Fedora: sudo dnf install gnome-shell-extension-appindicator"
-        warn "Depois ative: gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com (e saia/entre na sessão)."
+        if gnome-extensions list 2>/dev/null | grep -q "ubuntu-appindicators@ubuntu.com"; then
+            warn "A extensão de indicadores do Ubuntu está desativada; ativando ..."
+            gnome-extensions enable ubuntu-appindicators@ubuntu.com || true
+        else
+            warn "No GNOME o ícone só aparece com a extensão AppIndicator."
+            warn "Ubuntu:  sudo apt install gnome-shell-extension-appindicator"
+            warn "Fedora:  sudo dnf install gnome-shell-extension-appindicator"
+            warn "Depois saia e entre na sessão e ative em: Extensões → AppIndicator."
+        fi
     fi
 fi
 

@@ -4,13 +4,14 @@
 
 # Claude Usage Tray
 
-**O uso do seu plano Claude sempre à vista — direto na bandeja do Windows e do Linux.**
+**O uso do seu plano Claude sempre à vista — direto no painel do Ubuntu (e na bandeja do Windows).**
 
-Sessão de 5 horas, limite semanal e status do serviço, ao lado do relógio, como volume, Wi-Fi e bateria.
+Sessão de 5 horas, limite semanal e status do serviço, junto dos indicadores do sistema, como volume, Wi-Fi e bateria.
 
 [![build](https://github.com/Guilhermee19/claude-usage-tray/actions/workflows/build.yml/badge.svg)](https://github.com/Guilhermee19/claude-usage-tray/actions/workflows/build.yml)
+![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-Fedora%20%7C%20Arch%20%7C%20openSUSE-FCC624?logo=linux&logoColor=black)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-Ubuntu%20%7C%20Fedora%20%7C%20Arch-FCC624?logo=linux&logoColor=black)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -39,11 +40,47 @@ Sessão de 5 horas, limite semanal e status do serviço, ao lado do relógio, co
 
 - Uma conta Claude **Pro ou Max** logada no [Claude Code](https://docs.claude.com/en/docs/claude-code)
   (o app usa o mesmo login — precisa existir `~/.claude/.credentials.json`).
-- **Windows 10/11** ou **Linux** com bandeja do sistema (KDE, XFCE, Cinnamon, MATE, GNOME com AppIndicator).
-- **Python 3.10+** — no Windows: `winget install Python.Python.3.12`
+- **Ubuntu 22.04 ou 24.04** (alvo principal, X11 ou Wayland) — ou outro Linux com bandeja do sistema
+  (KDE, XFCE, Cinnamon, MATE, GNOME com AppIndicator) — ou **Windows 10/11**.
+- **Python 3.10+** — no Ubuntu já vem instalado. No Windows: `winget install Python.Python.3.12`
   (ou [python.org](https://www.python.org/downloads/), marcando *Add python.exe to PATH*).
 
 ## Instalação
+
+### Ubuntu (e outros Linux)
+
+```bash
+git clone https://github.com/Guilhermee19/claude-usage-tray.git
+cd claude-usage-tray
+bash install-linux.sh
+```
+
+No Ubuntu o instalador usa o `apt` para instalar o que faltar — `python3-venv`, `python3-tk`, `python3-gi`,
+`gir1.2-ayatanaappindicator3-0.1` e `x11-utils` (pede a senha do `sudo` só se precisar). Em seguida cria o
+ambiente virtual, adiciona o **Claude Usage** ao menu de aplicativos, pergunta sobre o início automático e
+abre o app. Depois disso, use o menu de aplicativos (tecla Super → "Claude Usage") ou `bash start-linux.sh`.
+
+O ícone aparece no **canto superior direito**, junto de rede, volume e bateria, com a % ao lado. Clique nele
+para ver o resumo; **Abrir** mostra o popup logo abaixo do painel.
+
+Em outras distros o instalador usa **dnf** (Fedora), **pacman** (Arch) ou **zypper** (openSUSE).
+
+<details>
+<summary><b>Problemas comuns no Ubuntu</b></summary>
+
+| Sintoma | Solução |
+|---|---|
+| `dpkg was interrupted` | uma instalação anterior ficou pela metade: `sudo dpkg --configure -a && sudo apt-get install -f`, depois rode o instalador de novo |
+| `faltando: Tkinter, PyGObject/AppIndicator` mesmo após instalar | o `python3` do seu PATH é do pyenv/conda/Homebrew; o instalador já usa `/usr/bin/python3` — confira com `which python3` |
+| Ícone não aparece | a extensão **Ubuntu AppIndicators** precisa estar ativa: `gnome-extensions enable ubuntu-appindicators@ubuntu.com` (o instalador tenta ativar). Sem ela: `sudo apt install gnome-shell-extension-appindicator` e saia/entre na sessão |
+| Popup não fecha clicando fora | no GNOME janelas sem moldura podem não receber foco — use o **✕** do popup ou **Abrir** de novo no menu |
+| Ver erros | `~/.local/state/claude-usage-tray.log` e `~/.config/claude-usage-tray/app.log` |
+
+</details>
+
+> **Fedora, Debian e outros GNOME:** ícones de bandeja precisam da extensão
+> [AppIndicator](https://extensions.gnome.org/extension/615/appindicator-support/). No Fedora:
+> `sudo dnf install gnome-shell-extension-appindicator`, ative a extensão e reinicie a sessão.
 
 ### Windows
 
@@ -75,30 +112,14 @@ para uso local e não deve ser commitado.
 > Arraste-o para a barra, ou ative em *Configurações → Personalização → Barra de tarefas →
 > Outros ícones da bandeja*.
 
-### Linux
-
-```bash
-git clone https://github.com/Guilhermee19/claude-usage-tray.git
-cd claude-usage-tray
-bash install-linux.sh
-```
-
-O instalador detecta o gerenciador de pacotes (**apt**, **dnf**, **pacman** ou **zypper**) e instala o que
-faltar — Tkinter, PyGObject, AyatanaAppIndicator e xprop (pede `sudo` só se precisar). Em seguida cria o
-ambiente virtual, adiciona o app ao menu de aplicativos, pergunta sobre o início automático e abre o app.
-Depois disso, use o menu de aplicativos ou `bash start-linux.sh`.
-
-> **GNOME (Fedora, Debian…):** ícones de bandeja precisam da extensão
-> [AppIndicator](https://extensions.gnome.org/extension/615/appindicator-support/). No Ubuntu ela já vem
-> ativa. No Fedora: `sudo dnf install gnome-shell-extension-appindicator`, ative a extensão e reinicie a sessão.
-
 ## Uso
 
-| Ação | Windows | Linux |
+| Ação | Ubuntu / Linux | Windows |
 |---|---|---|
-| Abrir o popup | clique esquerdo no ícone | menu do ícone → **Abrir** |
-| Menu rápido | clique direito | clique no ícone |
-| Ver os números sem abrir | passe o mouse (tooltip) ou abra o menu | `8%` ao lado do ícone no painel, ou abra o menu |
+| Abrir o popup | clique no ícone → **Abrir** | clique esquerdo no ícone |
+| Menu rápido | clique no ícone | clique direito |
+| Ver os números sem abrir | `8%` ao lado do ícone no painel, ou abra o menu | passe o mouse (tooltip) ou abra o menu |
+| Fechar o popup | **✕**, `Esc` ou clicar fora | `Esc` ou clicar fora |
 
 O topo do menu sempre mostra o resumo — `Sessão: 8% — reseta hoje às 19:10` e `Semana: 4% — reseta qui 29/10`.
 Depois vêm **Atualizar agora**, **Ícone da barra** (estilo, monocromático e, no Linux, *Mostrar % ao lado do

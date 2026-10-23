@@ -1,13 +1,14 @@
 """Popup no estilo do menu bar extra do macOS, ancorado perto do ícone da bandeja."""
+import math
 import tkinter as tk
 
-from .system import style_window, work_area
+from .system import IS_WINDOWS, style_window, work_area
 from .theme import (BG, BORDER, BRAND, CARD, FG, GREEN, HOVER, MUTED, RED, TRACK,
                     font, hex_color, hoverable, round_rect, scale_of)
 from .tray_icon import color_for
 from .usage_api import Window, format_reset
 
-WIDTH = 320
+WIDTH = 320 if IS_WINDOWS else 350  # fontes do Linux (Ubuntu/DejaVu) são mais largas + botão ✕
 PAD = 14
 CARD_HEIGHT = 84
 MARGIN = 12
@@ -92,11 +93,23 @@ class Popup:
             c.tag_lower(pill, text)
             c.tag_raise(dot)
 
+        if not IS_WINDOWS:
+            # No GNOME (Ubuntu) janelas sem moldura muitas vezes não recebem foco, então "clicar fora"
+            # e Esc podem não fechar — o ✕ garante.
+            self._close_button(S(WIDTH - PAD - 48), S(PAD + 16))
         cx, cy, r = S(WIDTH - PAD - 14), S(PAD + 16), S(14)
         bg = c.create_oval(cx - r, cy - r, cx + r, cy + r, fill=CARD, outline="")
         icon = c.create_text(cx, cy, text="↻", fill=FG, font=font(12))
         hoverable(c, (bg, icon), bg, self.on_refresh, normal=CARD, hover=HOVER)
         return PAD + 52
+
+    def _close_button(self, cx: float, cy: float) -> None:
+        c, S = self.canvas, lambda v: v * self.s
+        r, d = S(14), S(4.5)
+        bg = c.create_oval(cx - r, cy - r, cx + r, cy + r, fill=CARD, outline="")
+        lines = [c.create_line(cx - d, cy - d * sy, cx + d, cy + d * sy, fill=FG, width=S(1.6), capstyle="round")
+                 for sy in (1, -1)]
+        hoverable(c, (bg, *lines), bg, self.close, normal=CARD, hover=HOVER)
 
     def _card(self, window: Window, y: int) -> None:
         c, S = self.canvas, lambda v: v * self.s
@@ -145,9 +158,15 @@ class Popup:
 
     def _gear_icon(self, cx: float, cy: float, color: str) -> tuple[int, ...]:
         c, S = self.canvas, lambda v: v * self.s
-        teeth = c.create_oval(cx - S(6), cy - S(6), cx + S(6), cy + S(6), outline=color, width=S(3), dash=(2, 2))
-        ring = c.create_oval(cx - S(4), cy - S(4), cx + S(4), cy + S(4), outline=color, width=S(1.5))
-        return teeth, ring
+        # Dentes como traços radiais: outline tracejado renderiza diferente no Windows e no X11.
+        teeth = [
+            c.create_line(cx + S(4) * math.cos(a), cy + S(4) * math.sin(a),
+                          cx + S(7) * math.cos(a), cy + S(7) * math.sin(a), fill=color, width=S(2.2))
+            for a in (i * math.pi / 4 for i in range(8))
+        ]
+        ring = c.create_oval(cx - S(4.5), cy - S(4.5), cx + S(4.5), cy + S(4.5), outline=color, width=S(2))
+        hole = c.create_oval(cx - S(1.5), cy - S(1.5), cx + S(1.5), cy + S(1.5), outline=color, width=S(1))
+        return (*teeth, ring, hole)
 
     def _power_icon(self, cx: float, cy: float, color: str) -> tuple[int, ...]:
         c, S = self.canvas, lambda v: v * self.s
@@ -161,12 +180,19 @@ class Popup:
         self.on_settings()
 
     def _place(self) -> None:
-        """Abre perto do ponteiro (que está no ícone da bandeja), do lado do painel onde ele está."""
         self.win.update_idletasks()
         left, top, right, bottom = work_area(self.root)
         w, h = self.win.winfo_reqwidth(), self.win.winfo_reqheight()
         m = int(MARGIN * self.s)
-        px, py = self.root.winfo_pointerxy()
-        x = min(max(px - w // 2, left + m), right - w - m)
-        y = top + m if py < (top + bottom) / 2 else bottom - h - m
+        if IS_WINDOWS:
+            # Abre sobre o ícone clicado (o ponteiro está nele), do lado da barra de tarefas.
+            px, py = self.root.winfo_pointerxy()
+            x = min(max(px - w // 2, left + m), right - w - m)
+            y = top + m if py < (top + bottom) / 2 else bottom - h - m
+        else:
+            # No Wayland (padrão do Ubuntu) o Tk não sabe onde o ponteiro está quando o menu é do
+            # GNOME; ancora no canto direito, colado no painel — no Ubuntu, logo abaixo dos indicadores.
+            panel_at_bottom = self.root.winfo_screenheight() - bottom > top
+            x = right - w - m
+            y = bottom - h - m if panel_at_bottom else top + m
         self.win.geometry(f"{w}x{h}+{x}+{y}")

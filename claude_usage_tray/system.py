@@ -62,7 +62,8 @@ def work_area(root: tk.Misc) -> tuple[int, int, int, int]:
         x, y, w, h = (int(v) for v in out.split("=", 1)[1].replace(",", " ").split()[:4])
         return x, y, x + w, y + h
     except (OSError, ValueError, IndexError, subprocess.SubprocessError):
-        return 0, 0, root.winfo_screenwidth(), root.winfo_screenheight()
+        # Sem xprop: assume a barra superior do GNOME/Ubuntu (~32 px) para o popup não cobri-la.
+        return 0, 32, root.winfo_screenwidth(), root.winfo_screenheight()
 
 
 def style_window(win: tk.Misc, dark_titlebar: bool = False) -> None:
@@ -164,4 +165,6 @@ def desktop_entry(command: list[str]) -> str:
         "Terminal=false\n"
         "Categories=Utility;\n"
         "X-GNOME-Autostart-enabled=true\n"
+        # No login do Ubuntu o painel e a extensão de indicadores sobem depois dos apps de autostart.
+        "X-GNOME-Autostart-Delay=5\n"
     )

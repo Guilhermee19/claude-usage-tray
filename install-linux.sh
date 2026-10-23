@@ -42,6 +42,12 @@ bold "[1/4] Verificando dependências do sistema ..."
 if ! deps_ok; then
     sudo=""; [[ $EUID -ne 0 ]] && sudo="sudo"
     if command -v apt-get >/dev/null; then
+        # Instalação anterior interrompida: o apt recusa tudo até o dpkg terminar o que ficou pela metade.
+        if [[ -n "$(ls -A /var/lib/dpkg/updates 2>/dev/null)" ]]; then
+            fail "Uma instalação de pacotes anterior foi interrompida e o apt está travado.
+       Rode:  sudo dpkg --configure -a && sudo apt-get install -f
+       Depois rode este instalador de novo."
+        fi
         $sudo apt-get update -qq
         $sudo apt-get install -y python3 python3-venv python3-tk python3-gi gir1.2-ayatanaappindicator3-0.1 x11-utils
     elif command -v dnf >/dev/null; then
